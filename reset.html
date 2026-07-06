@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إعادة تعيين كلمة المرور — حياتي</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; background: #FBF7EC; color: #1B2B22; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { width: 100%; max-width: 420px; background: #fff; border: 1px solid #EFE7D2; border-radius: 22px; overflow: hidden; }
+  .head { background: #14533C; text-align: center; padding: 28px 24px; }
+  .head .logo { width: 68px; height: 68px; border-radius: 18px; background: #FBF7EC; display: inline-flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; color: #14533C; }
+  .head p { color: #CFE3D6; font-size: 13px; margin-top: 10px; }
+  .body { padding: 28px 26px 32px; }
+  h1 { font-size: 22px; font-weight: 800; color: #14533C; text-align: center; margin-bottom: 6px; }
+  .sub { font-size: 14px; color: #5A6560; text-align: center; margin-bottom: 22px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #33403A; margin-bottom: 6px; }
+  input { width: 100%; height: 50px; border: 1px solid #D8D0BC; border-radius: 12px; padding: 0 16px; font-size: 16px; background: #FDFCF8; margin-bottom: 16px; font-family: inherit; }
+  input:focus { outline: none; border-color: #14533C; }
+  button { width: 100%; height: 52px; background: #14533C; color: #fff; border: none; border-radius: 999px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  button:disabled { opacity: .6; cursor: default; }
+  .msg { text-align: center; font-size: 14px; margin-top: 14px; line-height: 1.7; }
+  .msg.err { color: #A6362F; }
+  .msg.ok { color: #14533C; font-weight: 600; }
+  .en { direction: ltr; text-align: center; color: #8A938D; font-size: 12px; margin-top: 20px; }
+  .hidden { display: none; }
+  .center { text-align: center; padding: 10px 0; color: #5A6560; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="logo">حياتي</div>
+      <p>رفيقك اليومي للصلاة والقرآن</p>
+    </div>
+    <div class="body">
+      <h1>كلمة مرور جديدة</h1>
+      <p class="sub">اختر كلمة مرور جديدة لحسابك · Set a new password</p>
+
+      <div id="loading" class="center">جارٍ التحقق من الرابط…</div>
+
+      <form id="form" class="hidden">
+        <label for="pw">كلمة المرور الجديدة · New password</label>
+        <input id="pw" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
+        <label for="pw2">تأكيد كلمة المرور · Confirm</label>
+        <input id="pw2" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
+        <button id="btn" type="submit">حفظ كلمة المرور · Save</button>
+      </form>
+
+      <div id="msg" class="msg"></div>
+
+      <div id="expired" class="hidden">
+        <p class="msg err">الرابط غير صالح أو منتهي.<br>This link is invalid or expired.</p>
+        <p class="center">اطلب رابطاً جديداً من التطبيق · Request a new link from the app.</p>
+      </div>
+
+      <div class="en">Hayati · hayati-app.com</div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var SUPABASE_URL = "https://genruviotzbnyjiiemid.supabase.co";
+  var SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlbnJ1dmlvdHpibnlqaWllbWlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNTM0NTAsImV4cCI6MjA5ODYyOTQ1MH0.lB3-hxUSo7xPcHwUIgkciEvB8N_33fY9tl7js1CmZXw";
+
+  var el = function (id) { return document.getElementById(id); };
+  var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { detectSessionInUrl: true, flowType: "implicit" }
+  });
+
+  var ready = false;
+  function showForm() { if (ready) return; ready = true; el("loading").classList.add("hidden"); el("form").classList.remove("hidden"); }
+  function showExpired() { el("loading").classList.add("hidden"); el("expired").classList.remove("hidden"); }
+
+  // If the URL carries an error (expired/invalid), show the expired state.
+  var hash = window.location.hash || "";
+  if (hash.indexOf("error") !== -1) { showExpired(); }
+
+  // supabase-js parses the recovery token from the URL and fires this event.
+  client.auth.onAuthStateChange(function (event, session) {
+    if (event === "PASSWORD_RECOVERY" || session) { showForm(); }
+  });
+
+  // Fallback: check for an existing session shortly after load.
+  setTimeout(function () {
+    client.auth.getSession().then(function (res) {
+      if (res.data && res.data.session) { showForm(); }
+      else if (!ready) { showExpired(); }
+    });
+  }, 1500);
+
+  el("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var pw = el("pw").value, pw2 = el("pw2").value, msg = el("msg");
+    msg.className = "msg"; msg.textContent = "";
+    if (pw.length < 6) { msg.className = "msg err"; msg.textContent = "كلمة المرور قصيرة — ٦ أحرف على الأقل · Too short (min 6)"; return; }
+    if (pw !== pw2) { msg.className = "msg err"; msg.textContent = "كلمتا المرور غير متطابقتين · Passwords don't match"; return; }
+    el("btn").disabled = true; msg.textContent = "جارٍ الحفظ…";
+    client.auth.updateUser({ password: pw }).then(function (res) {
+      if (res.error) { el("btn").disabled = false; msg.className = "msg err"; msg.textContent = "تعذّر الحفظ، حاول مجدداً · Failed, try again"; return; }
+      el("form").classList.add("hidden");
+      msg.className = "msg ok";
+      msg.textContent = "تم تغيير كلمة المرور بنجاح ✓  الآن سجّل الدخول في التطبيق. Password changed — sign in from the app.";
+    });
+  });
+</script>
+</body>
+</html>
